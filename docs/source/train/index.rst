@@ -82,6 +82,24 @@ Guides
 Common Patterns
 ---------------
 
+**Inspect a TrainJob before submitting it:**
+
+.. code-block:: python
+
+   from kubeflow.trainer.options import Name
+
+   runtime = client.get_runtime("torch-distributed")
+   options = [Name("review-me")]
+   preview = client.preview_train_job(runtime=runtime, options=options)
+   # Review the dictionary before calling train with the same inputs.
+   job_name = client.train(runtime=runtime, options=options)
+
+``preview_train_job`` returns the dictionary sent by the Kubernetes backend without
+creating a TrainJob. It does not perform server-side validation. Client initialization
+and runtime lookup may still read from the cluster. Use a fixed ``Name`` option when
+comparing separate preview and submission calls; otherwise each call generates a new
+name. The dictionary may contain sensitive configuration.
+
 **Get logs while training:**
 
 .. code-block:: python

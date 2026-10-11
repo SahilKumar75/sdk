@@ -14,6 +14,7 @@
 
 from collections.abc import Callable, Iterator
 import logging
+from typing import Any
 
 from kubeflow.common.types import KubernetesBackendConfig
 import kubeflow.common.utils as common_utils
@@ -180,6 +181,45 @@ class TrainerClient:
             >>> print(job_id)
         """
         return self.backend.train(
+            runtime=runtime,
+            initializer=initializer,
+            trainer=trainer,
+            options=options,
+        )
+
+    def preview_train_job(
+        self,
+        runtime: str | types.Runtime | None = None,
+        initializer: types.Initializer | None = None,
+        trainer: types.CustomTrainer
+        | types.CustomTrainerContainer
+        | types.BuiltinTrainer
+        | None = None,
+        options: list | None = None,
+    ) -> dict[str, Any]:
+        """Preview the Kubernetes TrainJob dictionary that ``train`` would submit.
+
+        This method does not create a TrainJob. Client initialization and runtime
+        name resolution may still read from the cluster. Use an explicit ``Runtime``
+        object and ``Name`` option to inspect a stable resource.
+
+        Args:
+            runtime: Runtime name or object. Defaults to the torch-distributed runtime.
+            initializer: Optional dataset and model initializer configuration.
+            trainer: Optional custom or built-in trainer configuration.
+            options: Optional TrainJob configuration options.
+
+        Returns:
+            The exact TrainJob dictionary passed to the Kubernetes create request.
+            It may contain sensitive configuration and should be handled accordingly.
+
+        Raises:
+            NotImplementedError: The configured backend is not Kubernetes.
+        """
+        if not isinstance(self.backend, KubernetesBackend):
+            raise NotImplementedError("TrainJob preview requires the Kubernetes backend")
+
+        return self.backend.preview_train_job(
             runtime=runtime,
             initializer=initializer,
             trainer=trainer,

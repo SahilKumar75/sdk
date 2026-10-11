@@ -70,3 +70,11 @@ def test_backend_selection(test_case):
         client = TrainerClient(backend_config=test_case["backend_config"])
         backend_name = client.backend.__class__.__name__
         assert backend_name == test_case["expected_backend"]
+
+
+def test_preview_train_job_requires_kubernetes_backend():
+    """Local execution has no Kubernetes TrainJob resource to preview."""
+    client = TrainerClient(backend_config=LocalProcessBackendConfig())
+
+    with pytest.raises(NotImplementedError, match="Kubernetes backend"):
+        client.preview_train_job()

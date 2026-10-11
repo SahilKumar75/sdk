@@ -41,6 +41,7 @@ from kubeflow.test.common import (
     TIMEOUT,
     TestCase,
 )
+from kubeflow.trainer.api.trainer_client import TrainerClient
 from kubeflow.trainer.backends.kubernetes.backend import KubernetesBackend
 import kubeflow.trainer.backends.kubernetes.utils as utils
 from kubeflow.trainer.constants import constants
@@ -52,6 +53,7 @@ from kubeflow.trainer.options import (
     JobSpecPatch,
     JobTemplatePatch,
     Labels,
+    Name,
     PodSpecPatch,
     PodTemplatePatch,
     ReplicatedJobPatch,
@@ -1541,6 +1543,30 @@ def test_train(kubernetes_backend, test_case):
     except Exception as e:
         assert type(e) is test_case.expected_error
     print("test execution complete")
+
+
+def test_preview_train_job_matches_submitted_resource(kubernetes_backend):
+    """Preview builds the submitted resource without creating a TrainJob."""
+    client = TrainerClient(backend_config=KubernetesBackendConfig(namespace=DEFAULT_NAMESPACE))
+    runtime = client.get_runtime(TORCH_RUNTIME)
+    options = [Name(BASIC_TRAIN_JOB_NAME), Labels({"team": "ml-platform"})]
+
+    preview = client.preview_train_job(runtime=runtime, options=options)
+
+    assert isinstance(preview, dict)
+    assert (
+        preview
+        == get_train_job(
+            runtime_name=TORCH_RUNTIME,
+            train_job_name=BASIC_TRAIN_JOB_NAME,
+            labels={"team": "ml-platform"},
+        ).to_dict()
+    )
+    client.backend.custom_api.create_namespaced_custom_object.assert_not_called()
+
+    assert client.train(runtime=runtime, options=options) == BASIC_TRAIN_JOB_NAME
+    submitted = client.backend.custom_api.create_namespaced_custom_object.call_args.args[4]
+    assert submitted == preview
 
 
 @pytest.mark.parametrize(

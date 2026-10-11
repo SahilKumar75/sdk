@@ -292,7 +292,7 @@ class KubernetesBackend(RuntimeBackend):
                         job_name,
                     )
 
-    def train(
+    def _build_train_job(
         self,
         runtime: str | types.Runtime | None = None,
         initializer: types.Initializer | None = None,
@@ -301,7 +301,18 @@ class KubernetesBackend(RuntimeBackend):
         | types.BuiltinTrainer
         | None = None,
         options: list | None = None,
-    ) -> str:
+    ) -> models.TrainerV1alpha1TrainJob:
+        """Build the TrainJob resource without submitting it to Kubernetes.
+
+        Args:
+            runtime: Runtime name or object.
+            initializer: Optional dataset and model initializer configuration.
+            trainer: Optional custom or built-in trainer configuration.
+            options: Optional TrainJob configuration options.
+
+        Returns:
+            The TrainJob resource that would be submitted.
+        """
         # Process options to extract configuration
         job_spec = {}
         labels = None
@@ -351,6 +362,44 @@ class KubernetesBackend(RuntimeBackend):
             ),
             spec=trainjob_spec,
         )
+
+        return train_job
+
+    def preview_train_job(
+        self,
+        runtime: str | types.Runtime | None = None,
+        initializer: types.Initializer | None = None,
+        trainer: types.CustomTrainer
+        | types.CustomTrainerContainer
+        | types.BuiltinTrainer
+        | None = None,
+        options: list | None = None,
+    ) -> dict[str, Any]:
+        """Return the TrainJob dictionary submitted by ``train`` without creating it."""
+        return self._build_train_job(
+            runtime=runtime,
+            initializer=initializer,
+            trainer=trainer,
+            options=options,
+        ).to_dict()
+
+    def train(
+        self,
+        runtime: str | types.Runtime | None = None,
+        initializer: types.Initializer | None = None,
+        trainer: types.CustomTrainer
+        | types.CustomTrainerContainer
+        | types.BuiltinTrainer
+        | None = None,
+        options: list | None = None,
+    ) -> str:
+        train_job = self._build_train_job(
+            runtime=runtime,
+            initializer=initializer,
+            trainer=trainer,
+            options=options,
+        )
+        train_job_name = train_job.metadata.name
 
         # Create the TrainJob.
         try:
